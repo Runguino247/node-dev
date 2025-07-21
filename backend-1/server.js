@@ -1,6 +1,6 @@
-
 const http = require("http");
 const { Client } = require("pg");
+// Configuración de conexión a la base de datos
 const connectionData = {
   user: "postgres",
   host: "127.0.0.1",
@@ -8,22 +8,39 @@ const connectionData = {
   password: "kae123",
   port: 5432,
 };
+
 const client = new Client(connectionData);
 client.connect();
+
+// Crear servidor HTTP
 const server = http.createServer((req, res) => {
+  // Configurar CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+  );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
   if (req.method === "OPTIONS") {
-    res.writeHead(204); // Sin contenido
+    res.writeHead(204);
     res.end();
     return;
   }
+
+// Ruta para obtener todos los usuarios
   if (req.method === "GET" && req.url === "/") {
-    client.query(`SELECT * FROM practica.usuarios ORDER BY correo`).then((respone) => {
-      res.writeHead(200, { "content-type": "text/json" });
-      res.end(JSON.stringify(respone.rows));
-    });
+    client
+      .query(`SELECT * FROM practica.usuarios ORDER BY correo`)
+      .then((respone) => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(respone.rows));
+      }).catch((err) => {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Error al obtener datos", body: err }));
+      });
+
+  // Ruta para buscar usuarios por correo (parcial)
   } else if (req.method === "GET" && req.url.startsWith("/")) {
     client
       .query(
@@ -32,12 +49,22 @@ const server = http.createServer((req, res) => {
         )}%' ORDER BY correo`
       )
       .then((response) => {
-        const respuesta = response.rows || [];
-        res.writeHead(200, { "content-type": "text/json" });
-        res.end(JSON.stringify(respuesta));
+        if (response.rowCount == 0) {
+          res.writeHead(400, { "content-type": "application/json" });
+          res.end(JSON.stringify({mensaje: "Usuario no encontrado"}));
+        }else{
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify(response.rows));
+        }
+      }).catch((err) => {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Error en búsqueda", body: err }));
       });
+
+  // Ruta para registrar un nuevo usuario
   } else if (req.method === "POST" && req.url === "/registro") {
     let body = {};
+
     req.on("data", (chunk) => {
       body = JSON.parse(chunk);
       client
@@ -57,12 +84,14 @@ const server = http.createServer((req, res) => {
           res.writeHead(400, { "content-type": "application/json" });
           res.end(
             JSON.stringify({
-              mensaje: "Hubo un error ",
+              mensaje: "Hubo un error al insertar el usuario ",
               data: err,
             })
           );
         });
     });
+
+  // Ruta para actualizar usuario completamente
   } else if (req.method === "PUT" && req.url.startsWith("/actualizar/")) {
     let body = {};
     req.on("data", (chunk) => {
@@ -76,21 +105,21 @@ const server = http.createServer((req, res) => {
             res.writeHead(200, { "content-Type": "application/json" });
             res.end(
               JSON.stringify({
-                mensaje: "se actualizo correctamente",
+                mensaje: "Se actualizo correctamente",
                 data: body,
               })
             );
           } else {
-            res.writeHead(400, { "content-Type": "application/json" });
+            res.writeHead(404, { "content-Type": "application/json" });
             res.end(
               JSON.stringify({
-                mensaje: "no se encontro el elemento",
+                mensaje: "Usuario no encontrado",
               })
             );
           }
         })
         .catch((err) => {
-          res.writeHead(404, { "content-Type": "application/json" });
+          res.writeHead(500, { "content-Type": "application/json" });
           res.end(
             JSON.stringify({
               mensaje: "error al actualizar",
@@ -99,65 +128,60 @@ const server = http.createServer((req, res) => {
           );
         });
     });
+    
+  // Ruta para eliminar un usuario
   } else if (req.method === "DELETE" && req.url.startsWith("/eliminar/")) {
     let body = {};
-    console.log("ngjisdahiugfa");
-    console.log(req.url.substring(10));
     client
-        .query(
-          `DELETE FROM practica.usuarios WHERE correo LIKE '${req.url.substring(10)}'`
-        )
-        .then((response) => {
-          if (response.rowCount) {
-            res.writeHead(201, { "Concente-Type": "application/json" });
-            res.end(
-              JSON.stringify({
-                mensaje: "eliminado con exito",
-                data: body,
-              })
-            );
-          } else {
-            res.writeHead(404, { "Concente-Type": "apliccation/json" });
-            res.end(
-              JSON.stringify({
-                mensaje: "elemento no encontrado",
-                data: body,
-              })
-            );
-          }
-        })
-        .catch((err) => {
-          res.writeHead(400, { "Content-Type": "application/json" });
-          res.end({
-            mensaje: "Hubo un error al eliminar ",
-            data: err,
-          });
+      .query(
+        `DELETE FROM practica.usuarios WHERE correo LIKE '${req.url.substring(
+          10
+        )}'`
+      )
+      .then((response) => {
+        if (response.rowCount) {
+          res.writeHead(200, { "Concente-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              mensaje: "Eliminado con exito",
+              data: body,
+            })
+          );
+        } else {
+          res.writeHead(404, { "Concente-Type": "apliccation/json" });
+          res.end(
+            JSON.stringify({
+              mensaje: "Usuario no encontrado",
+              data: body,
+            })
+          );
+        }
+      })
+      .catch((err) => {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end({
+          mensaje: "Error al eliminar ",
+          data: err,
         });
+      });
 
+  // Ruta para actualizar parcialmente con PATCH
   } else if (req.method === "PATCH" && req.url === "/parcial") {
-    console.log("nice");
     let body = {};
     req.on("data", (chuck) => {
       body = JSON.parse(chuck);
-      console.log(body);
-      console.log(typeof body);
-      typeof body;
       for (const key of Object.keys(body)) {
-        if (key == "correo") {
-
-        } else {
-          console.log(key);
-          console.log(body[key]);
+        if (key != "correo") {
           client
             .query(
               `UPDATE practica.usuarios SET ${key} = '${body[key]}' WHERE correo = '${body.correo}'`
             )
             .then((response) => {
-              if (response.rowCount) {
+              if (response.rowCount>0) {
                 res.writeHead(200, { "Concente-Type": "application/json" });
                 res.end(
                   JSON.stringify({
-                    mensaje: "modificado con exito",
+                    mensaje: "Actualizado con exito",
                     data: body,
                   })
                 );
@@ -165,8 +189,7 @@ const server = http.createServer((req, res) => {
                 res.writeHead(404, { "Concente-Type": "apliccation/json" });
                 res.end(
                   JSON.stringify({
-                    mensaje: "elemento no encontrado",
-                    data: body,
+                    mensaje: "No se encontro al usuario",
                   })
                 );
               }
@@ -174,28 +197,29 @@ const server = http.createServer((req, res) => {
             .catch((err) => {
               res.writeHead(400, { "Content-Type": "application/json" });
               res.end({
-                mensaje: "Hubo un error al modificar ",
+                mensaje: "Error al modificar ",
                 data: err,
               });
             });
         }
       }
     });
+
+  // Ruta no encontrada
   } else {
     console.log("bad");
     console.warn(
-      "error del metodo " +
-        "method: " +
+      "Ruta no válida - Method: " +
         req.method +
         "; URL: " +
-        req.url +
-        "   "
+        req.url
     );
-    res.writeHead(404);
-    res.end();
+    res.writeHead(404, {"Content-Type":"application/json"});
+    res.end(JSON.stringify({mensaje: "Ruta o metodo no encontrado"}));
   }
 });
 
+// Escuchar en el puerto 3000
 server.listen(3000, () => {
   console.log("Servidor conectado en el puerto 3000");
 });
