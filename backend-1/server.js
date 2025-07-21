@@ -1,3 +1,4 @@
+
 const http = require("http");
 const { Client } = require("pg");
 // Configuración de conexión a la base de datos
@@ -8,9 +9,6 @@ const connectionData = {
   password: "kae123",
   port: 5432,
 };
-
-
-
 
 const client = new Client(connectionData);
 client.connect();
