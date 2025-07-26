@@ -2,7 +2,7 @@
 const http = require("http");
 const { Client } = require("pg");
 // Configuración de conexión a la base de datos
-const connectionData = {
+const connectionData = {  
   user: "postgres",
   host: "127.0.0.1",
   database: "formulariodb",
@@ -22,14 +22,13 @@ const server = http.createServer((req, res) => {
     "GET, POST, PUT, DELETE, PATCH, OPTIONS"
   );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     res.end();
     return;
   }
 
-// Ruta para obtener todos los usuarios
+//* Ruta para obtener todos los usuarios
   if (req.method === "GET" && req.url === "/") {
     client
       .query(`SELECT * FROM practica.usuarios ORDER BY correo`)
@@ -41,7 +40,7 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: "Error al obtener datos", body: err }));
       });
 
-  // Ruta para buscar usuarios por correo (parcial)
+  //* Ruta para buscar usuarios por correo (parcial)
   } else if (req.method === "GET" && req.url.startsWith("/")) {
     client
       .query(
@@ -62,7 +61,7 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: "Error en búsqueda", body: err }));
       });
 
-  // Ruta para registrar un nuevo usuario
+  //* Ruta para registrar un nuevo usuario
   } else if (req.method === "POST" && req.url === "/registro") {
     let body = {};
 
@@ -70,7 +69,12 @@ const server = http.createServer((req, res) => {
       body = JSON.parse(chunk);
       client
         .query(
-          `INSERT INTO practica.usuarios (correo, nombre, mensaje) VALUES ('${body.correo}','${body.nombre}','${body.mensaje}')`
+          `INSERT INTO practica.usuarios (correo, nombre, mensaje)
+          VALUES (
+          '${body.correo}',
+          '${body.nombre}',
+          '${body.mensaje}
+          ')`
         )
         .then(() => {
           res.writeHead(201, { "content-type": "application/json" });
@@ -92,14 +96,19 @@ const server = http.createServer((req, res) => {
         });
     });
 
-  // Ruta para actualizar usuario completamente
+  //* Ruta para actualizar usuario completamente
   } else if (req.method === "PUT" && req.url.startsWith("/actualizar/")) {
     let body = {};
     req.on("data", (chunk) => {
       body = JSON.parse(chunk);
       client
         .query(
-          `UPDATE practica.usuarios SET nombre = '${body.nombre}', mensaje = '${body.mensaje}' WHERE correo like '${body.correo}'`
+          `UPDATE practica.usuarios 
+          SET 
+            nombre = '${body.nombre}', 
+            mensaje = '${body.mensaje}' 
+          WHERE 
+            correo like '${body.correo}'`
         )
         .then((response) => {
           if (response.rowCount) {
@@ -130,7 +139,7 @@ const server = http.createServer((req, res) => {
         });
     });
     
-  // Ruta para eliminar un usuario
+  //* Ruta para eliminar un usuario
   } else if (req.method === "DELETE" && req.url.startsWith("/eliminar/")) {
     let body = {};
     client
@@ -166,7 +175,7 @@ const server = http.createServer((req, res) => {
         });
       });
 
-  // Ruta para actualizar parcialmente con PATCH
+  //* Ruta para actualizar parcialmente con PATCH
   } else if (req.method === "PATCH" && req.url === "/parcial") {
     let body = {};
     req.on("data", (chuck) => {
@@ -175,7 +184,11 @@ const server = http.createServer((req, res) => {
         if (key != "correo") {
           client
             .query(
-              `UPDATE practica.usuarios SET ${key} = '${body[key]}' WHERE correo = '${body.correo}'`
+              `UPDATE practica.usuarios 
+              SET 
+                ${key} = '${body[key]}' 
+              WHERE 
+                correo = '${body.correo}'`
             )
             .then((response) => {
               if (response.rowCount>0) {
@@ -206,7 +219,7 @@ const server = http.createServer((req, res) => {
       }
     });
 
-  // Ruta no encontrada
+  //* Ruta no encontrada
   } else {
     console.log("bad");
     console.warn(
